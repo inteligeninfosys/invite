@@ -1,0 +1,20 @@
+{
+  "name": "invite",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "ical-toolkit": "^1.0.9",
+    "moment": "^2.29.1",
+    "nodemailer": "^6.6.3",
+    "nodemailer-smtp-transport": "^2.7.4"
+  }
+}
