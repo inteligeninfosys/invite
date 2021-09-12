@@ -4,5 +4,6 @@ module.exports = {
     smtpuser: process.env.SMTPUSER || 'ecollectsystem@gmail.com',
     pass:  process.env.PASS || 'W1ndowsxp',
     from: process.env.FROM || 'ecollectsystem@gmail.com',
-    to: process.env.TO || 'kevin.abongo@royalcyber.com'
+    to: process.env.TO || 'kevin.abongo@royalcyber.com',
+    url: process.env.URL || 'http://localhost:6001'
 }
