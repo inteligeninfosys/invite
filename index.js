@@ -4,8 +4,9 @@ var smtpTransport = require('nodemailer-smtp-transport');
 var express = require("express");
 var cors = require('cors');
 var data = require('./data.js');
-const crypto = require("crypto");
+const moment = require("moment");
 const axios = require('axios');
+const https = require('https')
 
 var app = express();
 
@@ -22,9 +23,8 @@ app.get("/call/callscheduler", (req, res, next) => {
 });
 
 app.post("/call/callscheduler", (req, res, next) => {
-    const uuid = crypto.randomBytes(3*4).toString('base64')
+    const uuid = moment().unix();
 
-    console.log(req._body)
     //Create a iCal object
     var builder = icalToolkit.createIcsFileBuilder();
     builder.spacers = true;
@@ -49,23 +49,22 @@ app.post("/call/callscheduler", (req, res, next) => {
         stamp: new Date,
         location: 'Office',
         description: 'Customer Meeting!',
-        uid: uuid
-        /*attendees: [
+        uid: uuid,
+        attendees: [
             {
                 name: req.body.username, //Required
-                email: req.body.username + '@co-opbank.co.ke', //Required
+                email: req.body.username + '@co-opbank.co.ke', //Required 'kevin.abongo@royalcyber.com',//
                 status: 'ACCEPTED', //Optional
                 role: 'REQ-PARTICIPANT', //Optional
                 rsvp: true //Optional, adds 'RSVP=TRUE' , tells the application that organiser needs a RSVP response.
             }
-        ]*/
+        ]
     })
 
     var icsFileContent = builder.toString();
     var smtpOptions = {
         host: data.smtpserver,
         port: data.smtpport,
-        //secureConnection: true,
         secure: false, // upgrade later with STARTTLS
         tls: { rejectUnauthorized: false },
         debug: true,
@@ -80,8 +79,8 @@ app.post("/call/callscheduler", (req, res, next) => {
 
     var mailOptions = {
         from: data.from,
-        to: data.to,
-        subject: 'Customer Meeting - ' + req.body.custname,
+        to: req.body.username + '@co-opbank.co.ke',
+        subject: 'Customer Meeting with ' + req.body.custname +', a/c:'+ req.body.accnumber,
         html: "<h2>Meeting with "+req.body.custname+"</h2><p style=\"font-size: 1.5em;\">Details: "+req.body.notemade+"</p><p style=\"font-size: 1.5em;\"><a href=\""+req.body.link+"\">Link to E-Collect</a></p><p>&nbsp;</p>",
         alternatives: [{
             contentType: 'text/calendar; charset="utf-8"; method=REQUEST',
@@ -89,6 +88,7 @@ app.post("/call/callscheduler", (req, res, next) => {
         }]
     };
     //send mail with defined transport object 
+    
     transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
             console.log(error);
@@ -113,12 +113,11 @@ app.post("/call/callscheduler", (req, res, next) => {
                 startdate: req.body.startdatetosave,
                 owner: req.body.username
             }
-            axios({
-                method: 'post',
-                url: data.url + '/nodeapi/tbl-callschedules',
-                data: body
-              }).then(function (response) {
-                console.log(response);
+
+            const agent = new https.Agent({rejectUnauthorized: false})
+            axios.post(data.url + '/nodeapi/tbl-callschedules', body, {httpsAgent: agent})
+            .then(function (response) {
+                console.log('statusText: OK');
               })
               .catch(function (error) {
                 console.log(error);
@@ -163,7 +162,6 @@ app.post("/call/cancel-callscheduler", (req, res, next) => {
     var smtpOptions = {
         host: data.smtpserver,
         port: data.smtpport,
-        //secureConnection: true,
         secure: false, // upgrade later with STARTTLS
         tls: { rejectUnauthorized: false },
         debug: true,
@@ -178,11 +176,11 @@ app.post("/call/cancel-callscheduler", (req, res, next) => {
 
     var mailOptions = {
         from: data.from,
-        to: data.to,
-        subject: 'Customer Meeting - ' + req.body.custname,
+        to: req.body.username + '@co-opbank.co.ke',
+        subject: 'Customer Meeting with ' + req.body.custname +', a/c:'+ req.body.accnumber,
         html: "<h2>Meeting with "+req.body.custname+"</h2><p style=\"font-size: 1.5em;\">Details: "+req.body.notemade+"</p><p style=\"font-size: 1.5em;\"><a href=\""+req.body.link+"\">Link to E-Collect</a></p><p>&nbsp;</p>",
         alternatives: [{
-            contentType: 'text/calendar; charset="utf-8"; method=REQUEST',
+            contentType: 'text/calendar; charset="utf-8"; method=CANCEL',
             content: icsFileContent.toString()
         }]
     };
