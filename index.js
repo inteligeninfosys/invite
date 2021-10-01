@@ -23,7 +23,7 @@ app.get("/call/callscheduler", (req, res, next) => {
 });
 
 app.post("/call/callscheduler", (req, res, next) => {
-    const uuid = moment().unix();
+    const uuid = (moment().unix()).toString();
 
     //Create a iCal object
     var builder = icalToolkit.createIcsFileBuilder();
