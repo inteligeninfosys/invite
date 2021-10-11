@@ -7,6 +7,9 @@ var data = require('./data.js');
 const moment = require("moment");
 const axios = require('axios');
 const https = require('https')
+const { writeFileSync } = require('fs')
+var Minio = require("minio");
+const fs = require('fs')
 
 var app = express();
 
@@ -15,6 +18,14 @@ app.use(express.json());
 app.use(express.urlencoded({
     extended: true
 }));
+
+var minioClient = new Minio.Client({
+    endPoint: process.env.MINIO_ENDPOINT || '127.0.0.1',
+    port: process.env.MINIO_PORT || 9005,
+    useSSL: false,
+    accessKey: process.env.ACCESSKEY || 'AKIAIOSFODNN7EXAMPLE',
+    secretKey: process.env.SECRETKEY || 'wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY'
+});
 
 app.use(cors())
 
@@ -39,16 +50,17 @@ app.post("/call/callscheduler", (req, res, next) => {
     var d1 = new Date(req.body.startdate),
         d2 = new Date(d1);
     d2.setMinutes(d1.getMinutes() + 30);
-    
+
     builder.events.push({
         start: d1,
         end: d2,
         transp: 'OPAQUE',
-        summary: 'Customer Event',
+        summary: 'Customer Meeting with ' + req.body.custname + ', a/c:' + req.body.accnumber,
         alarms: [15, 10, 5],
         stamp: new Date,
         location: 'Office',
         description: 'Customer Meeting!',
+        //description: "<h2>Meeting with "+req.body.custname+"</h2><p style=\"font-size: 1.5em;\">Details: "+req.body.notemade+"</p><p style=\"font-size: 1.5em;\"><a href=\""+req.body.link+"\">Link to E-Collect</a></p><p>&nbsp;</p>",
         uid: uuid,
         attendees: [
             {
@@ -76,19 +88,37 @@ app.post("/call/callscheduler", (req, res, next) => {
 
     var transporter = nodemailer.createTransport(smtpTransport(smtpOptions));
     //var json = icalToolkit.parseToJSON(icsFileContent);
+    writeFileSync(`${__dirname}/event.ics`, icsFileContent)
+    var metaData = {
+        'Content-Type': 'text/calendar'
+    }
+    minioClient.fPutObject("meetings", uuid + '_event.ics', `${__dirname}/event.ics`, metaData, function (error, etag) {
+        if (error) {
+            return console.log(error);
+        }
+        console.log(etag);
+        // remove file
+        fs.unlink(`${__dirname}/event.ics`, (err) => {
+            if (err) {
+                console.error(err)
+                return
+            }
+            //file removed
+        })
+    });
 
     var mailOptions = {
         from: data.from,
         to: req.body.username + '@co-opbank.co.ke',
-        subject: 'Customer Meeting with ' + req.body.custname +', a/c:'+ req.body.accnumber,
-        html: "<h2>Meeting with "+req.body.custname+"</h2><p style=\"font-size: 1.5em;\">Details: "+req.body.notemade+"</p><p style=\"font-size: 1.5em;\"><a href=\""+req.body.link+"\">Link to E-Collect</a></p><p>&nbsp;</p>",
+        subject: 'Customer Meeting with ' + req.body.custname + ', a/c:' + req.body.accnumber,
+        html: "<h2>Meeting with " + req.body.custname + "</h2><p style=\"font-size: 1.5em;\">Details: " + req.body.notemade + "</p><p style=\"font-size: 1.5em;\"><a href=\"" + req.body.link + "\">Link to E-Collect</a></p><p>&nbsp;</p>",
         alternatives: [{
             contentType: 'text/calendar; charset="utf-8"; method=REQUEST',
             content: icsFileContent.toString()
         }]
     };
     //send mail with defined transport object 
-    
+
     transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
             console.log(error);
@@ -102,7 +132,8 @@ app.post("/call/callscheduler", (req, res, next) => {
             res.json({
                 result: 'OK',
                 message: info.response,
-                uid: uuid
+                uid: uuid,
+                link: data.serverurl + '/meetings/' + uuid + '_event.ics'
             })
             // save to tbl_callschedule table
             const body = {
@@ -111,20 +142,21 @@ app.post("/call/callscheduler", (req, res, next) => {
                 custname: req.body.custname,
                 notemade: req.body.notemade,
                 startdate: req.body.startdatetosave,
-                owner: req.body.username
+                owner: req.body.username,
+                link: data.serverurl + '/meetings/' + uuid + '_event.ics'
             }
 
-            const agent = new https.Agent({rejectUnauthorized: false})
-            axios.post(data.url + '/nodeapi/tbl-callschedules', body, {httpsAgent: agent})
-            .then(function (response) {
-                console.log('statusText: OK');
-              })
-              .catch(function (error) {
-                console.log(error);
-              })
-              .then(function () {
-                // always executed
-              }); 
+            const agent = new https.Agent({ rejectUnauthorized: false })
+            axios.post(data.url + '/nodeapi/tbl-callschedules', body, { httpsAgent: agent })
+                .then(function (response) {
+                    console.log('statusText: OK');
+                })
+                .catch(function (error) {
+                    console.log(error);
+                })
+                .then(function () {
+                    // always executed
+                });
         }
     });
 });
@@ -145,7 +177,7 @@ app.post("/call/cancel-callscheduler", (req, res, next) => {
     var d1 = new Date(req.body.startdate),
         d2 = new Date(d1);
     d2.setMinutes(d1.getMinutes() + 30);
-    
+
     builder.events.push({
         start: d1,
         end: d2,
@@ -177,8 +209,8 @@ app.post("/call/cancel-callscheduler", (req, res, next) => {
     var mailOptions = {
         from: data.from,
         to: req.body.username + '@co-opbank.co.ke',
-        subject: 'Customer Meeting with ' + req.body.custname +', a/c:'+ req.body.accnumber,
-        html: "<h2>Meeting with "+req.body.custname+"</h2><p style=\"font-size: 1.5em;\">Details: "+req.body.notemade+"</p><p style=\"font-size: 1.5em;\"><a href=\""+req.body.link+"\">Link to E-Collect</a></p><p>&nbsp;</p>",
+        subject: 'Customer Meeting with ' + req.body.custname + ', a/c:' + req.body.accnumber,
+        html: "<h2>Meeting with " + req.body.custname + "</h2><p style=\"font-size: 1.5em;\">Details: " + req.body.notemade + "</p><p style=\"font-size: 1.5em;\"><a href=\"" + req.body.link + "\">Link to E-Collect</a></p><p>&nbsp;</p>",
         alternatives: [{
             contentType: 'text/calendar; charset="utf-8"; method=CANCEL',
             content: icsFileContent.toString()
