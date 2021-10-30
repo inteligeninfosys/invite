@@ -33,9 +33,115 @@ app.get("/call/callscheduler", (req, res, next) => {
     res.json('working');
 });
 
+app.post("/call/callscheduler/fordownload", (req, res, next) => {
+    const uuid = (moment().unix()).toString();
+    //Create a iCal object
+    var builder = icalToolkit.createIcsFileBuilder();
+    builder.spacers = true;
+    builder.NEWLINE_CHAR = '\r\n';
+    builder.throwError = true;
+    builder.ignoreTZIDMismatch = true;
+    builder.calname = 'E-Collect';
+    builder.method = 'REQUEST';
+    builder.timezone = 'africa/nairobi';
+    builder.tzid = 'africa/nairobi';
+    //Add the event data
+    var d1 = new Date(req.body.scheduledate),
+        d2 = new Date(d1);
+    d2.setMinutes(d1.getMinutes() + 30);
+
+    builder.events.push({
+        start: d1,
+        end: d2,
+        transp: 'OPAQUE',
+        summary: 'Customer Meeting with ' + req.body.custname + ', a/c:' + req.body.accnumber,
+        alarms: [15, 10, 5],
+        stamp: new Date,
+        location: 'Office',
+        description: "Meeting with " + req.body.custname +  " Details: " + req.body.collectornote + ", " + req.body.link ,
+        //description: "<h2>Meeting with " + req.body.custname + "</h2><p style=\"font-size: 1.5em;\">Details: " + req.body.collectornote + "</p><p style=\"font-size: 1.5em;\"><a href=\"" + req.body.link + "\">Link to E-Collect</a></p><p>&nbsp;</p>",
+        uid: uuid,
+        //Optional Organizer info
+        organizer: {
+            name: 'E-Collect',
+            email: 'ecollect@co-opbank.co.ke'
+            //sentBy: 'person_acting_on_behalf_of_organizer@email.com' //OPTIONAL email address of the person who is acting on behalf of organizer.
+        },
+        attendees: [
+            {
+                name: req.body.username, //Required
+                email: req.body.username + '@co-opbank.co.ke', //Required 'kevin.abongo@royalcyber.com',//
+                status: 'NEEDS-ACTION', //Optional
+                role: 'REQ-PARTICIPANT', //Optional
+                rsvp: true //Optional, adds 'RSVP=TRUE' , tells the application that organiser needs a RSVP response.
+            }
+        ],
+        //What to do on addition
+        method: 'PUBLISH',
+        //Status of event
+        status: 'CONFIRMED'
+    })
+
+    var icsFileContent = builder.toString();
+    //var json = icalToolkit.parseToJSON(icsFileContent);
+    writeFileSync(`${__dirname}/event.ics`, icsFileContent)
+    var metaData = {
+        'Content-Type': 'text/calendar'
+    }
+    minioClient.fPutObject("meetings", uuid + '_event.ics', `${__dirname}/event.ics`, metaData, function (error, etag) {
+        if (error) {
+            //return console.log(error);
+            res.json({
+                result: 'ERROR',
+                message: error.message
+            })
+        }
+        // remove file
+        fs.unlink(`${__dirname}/event.ics`, (err) => {
+            if (err) {
+                console.error(err)
+                return
+            }
+            //file removed
+        })
+
+        // save to tbl_callschedule table
+        const body = {
+            uuid: uuid,
+            accnumber: req.body.accnumber,
+            custname: req.body.custname,
+            notemade: req.body.collectornote,
+            startdate: req.body.scheduledate,
+            owner: req.body.username,
+            link: data.serverurl + '/meetings/' + uuid + '_event.ics'
+        }
+
+        axios.post(data.url + '/nodeapi/tbl-callschedules', body)
+            .then(function (response) {
+                res.json({
+                    result: 'OK',
+                    message: 'response',
+                    uid: uuid,
+                    link: data.serverurl + '/meetings/' + uuid + '_event.ics'
+                })
+            })
+            .catch(function (error) {
+                res.json({
+                    result: 'ERROR',
+                    message: error.message
+                })
+            })
+            .then(function () {
+                // always executed
+            });
+    });
+
+    //const agent = new https.Agent({ rejectUnauthorized: false })
+});
+
 app.post("/call/callscheduler", (req, res, next) => {
     const uuid = (moment().unix()).toString();
-
+    console.log(data)
     //Create a iCal object
     var builder = icalToolkit.createIcsFileBuilder();
     builder.spacers = true;
@@ -59,8 +165,8 @@ app.post("/call/callscheduler", (req, res, next) => {
         alarms: [15, 10, 5],
         stamp: new Date,
         location: 'Office',
-        description: 'Customer Meeting!',
-        //description: "<h2>Meeting with "+req.body.custname+"</h2><p style=\"font-size: 1.5em;\">Details: "+req.body.notemade+"</p><p style=\"font-size: 1.5em;\"><a href=\""+req.body.link+"\">Link to E-Collect</a></p><p>&nbsp;</p>",
+        //description: 'Customer Meeting!',
+        description: "<h2>Meeting with " + req.body.custname + "</h2><p style=\"font-size: 1.5em;\">Details: " + req.body.notemade + "</p><p style=\"font-size: 1.5em;\"><a href=\"" + req.body.link + "\">Link to E-Collect</a></p><p>&nbsp;</p>",
         uid: uuid,
         attendees: [
             {
@@ -96,7 +202,6 @@ app.post("/call/callscheduler", (req, res, next) => {
         if (error) {
             return console.log(error);
         }
-        console.log(etag);
         // remove file
         fs.unlink(`${__dirname}/event.ics`, (err) => {
             if (err) {
