@@ -116,13 +116,16 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
             link: data.serverurl + '/meetings/' + uuid + '_event.ics'
         }
 
+        
+
         axios.post(data.url + '/nodeapi/tbl-callschedules', body)
             .then(function (response) {
                 res.json({
                     result: 'OK',
                     message: 'response',
                     uid: uuid,
-                    link: data.serverurl + '/meetings/' + uuid + '_event.ics'
+                    link: data.serverurl + '/meetings/' + uuid + '_event.ics',
+                    filename: uuid + '_event.ics'
                 })
             })
             .catch(function (error) {
