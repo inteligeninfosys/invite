@@ -21,14 +21,14 @@ app.use(express.urlencoded({
 
 var minioClient = new Minio.Client({
     endPoint: process.env.MINIO_ENDPOINT || '127.0.0.1',
-    port: process.env.MINIO_PORT || 9005,
+    port: process.env.MINIO_PORT ? parseInt(process.env.MINIO_PORT, 10) : 9005,
     useSSL: false,
     accessKey: process.env.ACCESSKEY || 'AKIAIOSFODNN7EXAMPLE',
     secretKey: process.env.SECRETKEY || 'wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY'
 });
 
 app.use(cors())
-
+minioClient.setRequestOptions({rejectUnauthorized: false})
 app.get("/call/callscheduler", (req, res, next) => {
     res.json('working');
 });
@@ -90,7 +90,7 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
     }
     minioClient.fPutObject("meetings", uuid + '_event.ics', `${__dirname}/event.ics`, metaData, function (error, etag) {
         if (error) {
-            //return console.log(error);
+            console.log(error);
             res.json({
                 result: 'ERROR',
                 message: error.message
@@ -144,7 +144,6 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
 
 app.post("/call/callscheduler", (req, res, next) => {
     const uuid = (moment().unix()).toString();
-    console.log(data)
     //Create a iCal object
     var builder = icalToolkit.createIcsFileBuilder();
     builder.spacers = true;
