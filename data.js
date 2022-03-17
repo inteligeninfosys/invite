@@ -5,6 +5,6 @@ module.exports = {
     pass:  process.env.PASS || 'W1ndowsxp',
     from: process.env.FROM || 'ecollectsystem@gmail.com',
     to: process.env.TO || 'kevin.abongo@royalcyber.com',
-    url: process.env.URL || 'http://localhost:6001',
+    nodeapi: process.env.NODEAPI || 'http://localhost:6001',
     serverurl: process.env.SERVERURL || 'http://localhost:9005',
 }

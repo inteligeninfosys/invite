@@ -118,7 +118,7 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
 
         
 
-        axios.post(data.url + '/nodeapi/tbl-callschedules', body)
+        axios.post(data.nodeapi + '/nodeapi/tbl-callschedules', body)
             .then(function (response) {
                 res.json({
                     result: 'OK',
@@ -254,7 +254,7 @@ app.post("/call/callscheduler", (req, res, next) => {
             }
 
             const agent = new https.Agent({ rejectUnauthorized: false })
-            axios.post(data.url + '/nodeapi/tbl-callschedules', body, { httpsAgent: agent })
+            axios.post(data.nodeapi + '/nodeapi/tbl-callschedules', body, { httpsAgent: agent })
                 .then(function (response) {
                     console.log('statusText: OK');
                 })
