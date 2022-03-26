@@ -95,11 +95,16 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
                 result: 'ERROR',
                 message: error.message
             })
+            retun
         }
         // remove file
         fs.unlink(`${__dirname}/event.ics`, (err) => {
             if (err) {
                 console.error(err)
+                res.json({
+                    result: 'ERROR',
+                    message: error.message
+                })
                 return
             }
             //file removed
@@ -113,22 +118,28 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
             notemade: req.body.collectornote,
             startdate: req.body.scheduledate,
             owner: req.body.username,
-            link: data.serverurl + '/meetings/' + uuid + '_event.ics'
+            link: data.serverurl + '/meetings/' + uuid + '_event.ics',
+            filename: uuid + '_event.ics'
         }
 
+        res.status(200).json({
+            result: 'OK',
+            message: body
+        })
+
         
+       /* console.log(body, data.nodeapi);
 
         axios.post(data.nodeapi + '/nodeapi/tbl-callschedules', body)
             .then(function (response) {
                 res.json({
                     result: 'OK',
-                    message: 'response',
-                    uid: uuid,
                     link: data.serverurl + '/meetings/' + uuid + '_event.ics',
                     filename: uuid + '_event.ics'
                 })
             })
             .catch(function (error) {
+                console.log(error)
                 res.json({
                     result: 'ERROR',
                     message: error.message
@@ -136,7 +147,7 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
             })
             .then(function () {
                 // always executed
-            });
+            });*/
     });
 
     //const agent = new https.Agent({ rejectUnauthorized: false })

@@ -13,5 +13,5 @@ EXPOSE 9000
 
 CMD ["node", "index.js"]
 
-# docker build -t migutak/callscheduller:5.7.7 .
+# docker build -t migutak/callscheduller:5.7.8 .
 
