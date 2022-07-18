@@ -6,5 +6,5 @@ module.exports = {
     from: process.env.FROM || 'ecollectsystem@gmail.com',
     to: process.env.TO || 'kevin.abongo@royalcyber.com',
     nodeapi: process.env.NODEAPI || 'http://localhost:6001',
-    serverurl: process.env.SERVERURL || 'http://localhost:9005',
+    serverurl: process.env.SERVERURL || 'http://localhost:9005', 
 }

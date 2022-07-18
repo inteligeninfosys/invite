@@ -91,7 +91,7 @@ app.post("/call/callscheduler/fordownload", (req, res, next) => {
     minioClient.fPutObject("meetings", uuid + '_event.ics', `${__dirname}/event.ics`, metaData, function (error, etag) {
         if (error) {
             console.log(error);
-            res.json({
+            res.status(500).json({
                 result: 'ERROR',
                 message: error.message
             })
