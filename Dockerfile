@@ -1,7 +1,7 @@
 FROM node:16-buster-slim
 
 WORKDIR /home/node
-COPY package*.json .
+COPY --chown=node package*.json ./
 RUN npm install --production
 
 # Bundle app source code
